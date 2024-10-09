@@ -2,7 +2,6 @@ use async_process::Command;
 use futures::executor::block_on;
 use futures_concurrency::future::Join;
 use std::path::{Path, PathBuf};
-const BOOTLOADER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
     #[cfg(not(feature = "uefi"))]
@@ -64,26 +63,19 @@ async fn uefi_main() {
 async fn build_uefi_bootloader(out_dir: &Path) -> PathBuf {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let mut cmd = Command::new(cargo);
-    cmd.arg("install").arg("bootloader-x86_64-uefi");
-    if Path::new("uefi").exists() {
-        // local build
-        cmd.arg("--path").arg("uefi");
-        println!("cargo:rerun-if-changed=uefi");
-        println!("cargo:rerun-if-changed=common");
-    } else {
-        cmd.arg("--version").arg(BOOTLOADER_VERSION);
-    }
+    cmd.arg("build").arg("-p").arg("bootloader-x86_64-uefi");
+    println!("cargo:rerun-if-changed=uefi");
+    println!("cargo:rerun-if-changed=common");
     cmd.arg("--locked");
     cmd.arg("--target").arg("x86_64-unknown-uefi");
     cmd.arg("-Zbuild-std=core")
         .arg("-Zbuild-std-features=compiler-builtins-mem");
-    cmd.arg("--root").arg(out_dir);
     cmd.env_remove("RUSTFLAGS");
     cmd.env_remove("CARGO_ENCODED_RUSTFLAGS");
     let status = cmd
         .status()
         .await
-        .expect("failed to run cargo install for uefi bootloader");
+        .expect("failed to run cargo build for uefi bootloader");
     if status.success() {
         let path = out_dir.join("bin").join("bootloader-x86_64-uefi.efi");
         assert!(
@@ -121,30 +113,25 @@ async fn build_uefi_bootloader(out_dir: &Path) -> PathBuf {
 async fn build_bios_boot_sector(out_dir: &Path) -> PathBuf {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let mut cmd = Command::new(cargo);
-    cmd.arg("install").arg("bootloader-x86_64-bios-boot-sector");
+    cmd.arg("build")
+        .arg("-p")
+        .arg("bootloader-x86_64-bios-boot-sector");
     let local_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("bios")
         .join("boot_sector");
-    if local_path.exists() {
-        // local build
-        cmd.arg("--path").arg(&local_path);
-        println!("cargo:rerun-if-changed={}", local_path.display());
-    } else {
-        cmd.arg("--version").arg(BOOTLOADER_VERSION);
-    }
+    println!("cargo:rerun-if-changed={}", local_path.display());
     cmd.arg("--locked");
     cmd.arg("--target").arg("i386-code16-boot-sector.json");
     cmd.arg("--profile").arg("stage-1");
     cmd.arg("-Zbuild-std=core")
         .arg("-Zbuild-std-features=compiler-builtins-mem");
-    cmd.arg("--root").arg(out_dir);
     cmd.env_remove("RUSTFLAGS");
     cmd.env_remove("CARGO_ENCODED_RUSTFLAGS");
     cmd.env_remove("RUSTC_WORKSPACE_WRAPPER"); // used by clippy
     let status = cmd
         .status()
         .await
-        .expect("failed to run cargo install for bios bootsector");
+        .expect("failed to run cargo build for bios bootsector");
     let elf_path = if status.success() {
         let path = out_dir
             .join("bin")
@@ -185,34 +172,29 @@ async fn build_bios_boot_sector(out_dir: &Path) -> PathBuf {
 async fn build_bios_stage_2(out_dir: &Path) -> PathBuf {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let mut cmd = Command::new(cargo);
-    cmd.arg("install").arg("bootloader-x86_64-bios-stage-2");
+    cmd.arg("build")
+        .arg("-p")
+        .arg("bootloader-x86_64-bios-stage-2");
     let local_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("bios")
         .join("stage-2");
-    if local_path.exists() {
-        // local build
-        cmd.arg("--path").arg(&local_path);
-        println!("cargo:rerun-if-changed={}", local_path.display());
-        println!(
-            "cargo:rerun-if-changed={}",
-            local_path.with_file_name("common").display()
-        );
-    } else {
-        cmd.arg("--version").arg(BOOTLOADER_VERSION);
-    }
+    println!("cargo:rerun-if-changed={}", local_path.display());
+    println!(
+        "cargo:rerun-if-changed={}",
+        local_path.with_file_name("common").display()
+    );
     cmd.arg("--locked");
     cmd.arg("--target").arg("i386-code16-stage-2.json");
     cmd.arg("--profile").arg("stage-2");
     cmd.arg("-Zbuild-std=core")
         .arg("-Zbuild-std-features=compiler-builtins-mem");
-    cmd.arg("--root").arg(out_dir);
     cmd.env_remove("RUSTFLAGS");
     cmd.env_remove("CARGO_ENCODED_RUSTFLAGS");
     cmd.env_remove("RUSTC_WORKSPACE_WRAPPER"); // used by clippy
     let status = cmd
         .status()
         .await
-        .expect("failed to run cargo install for bios second stage");
+        .expect("failed to run cargo build for bios second stage");
     let elf_path = if status.success() {
         let path = out_dir.join("bin").join("bootloader-x86_64-bios-stage-2");
         assert!(
@@ -251,30 +233,25 @@ async fn build_bios_stage_2(out_dir: &Path) -> PathBuf {
 async fn build_bios_stage_3(out_dir: &Path) -> PathBuf {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let mut cmd = Command::new(cargo);
-    cmd.arg("install").arg("bootloader-x86_64-bios-stage-3");
+    cmd.arg("build")
+        .arg("-p")
+        .arg("bootloader-x86_64-bios-stage-3");
     let local_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("bios")
         .join("stage-3");
-    if local_path.exists() {
-        // local build
-        cmd.arg("--path").arg(&local_path);
-        println!("cargo:rerun-if-changed={}", local_path.display());
-    } else {
-        cmd.arg("--version").arg(BOOTLOADER_VERSION);
-    }
+    println!("cargo:rerun-if-changed={}", local_path.display());
     cmd.arg("--locked");
     cmd.arg("--target").arg("i686-stage-3.json");
     cmd.arg("--profile").arg("stage-3");
     cmd.arg("-Zbuild-std=core")
         .arg("-Zbuild-std-features=compiler-builtins-mem");
-    cmd.arg("--root").arg(out_dir);
     cmd.env_remove("RUSTFLAGS");
     cmd.env_remove("CARGO_ENCODED_RUSTFLAGS");
     cmd.env_remove("RUSTC_WORKSPACE_WRAPPER"); // used by clippy
     let status = cmd
         .status()
         .await
-        .expect("failed to run cargo install for bios stage-3");
+        .expect("failed to run cargo build for bios stage-3");
     let elf_path = if status.success() {
         let path = out_dir.join("bin").join("bootloader-x86_64-bios-stage-3");
         assert!(
@@ -313,30 +290,25 @@ async fn build_bios_stage_3(out_dir: &Path) -> PathBuf {
 async fn build_bios_stage_4(out_dir: &Path) -> PathBuf {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let mut cmd = Command::new(cargo);
-    cmd.arg("install").arg("bootloader-x86_64-bios-stage-4");
+    cmd.arg("build")
+        .arg("-p")
+        .arg("bootloader-x86_64-bios-stage-4");
     let local_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("bios")
         .join("stage-4");
-    if local_path.exists() {
-        // local build
-        cmd.arg("--path").arg(&local_path);
-        println!("cargo:rerun-if-changed={}", local_path.display());
-    } else {
-        cmd.arg("--version").arg(BOOTLOADER_VERSION);
-    }
+    println!("cargo:rerun-if-changed={}", local_path.display());
     cmd.arg("--locked");
     cmd.arg("--target").arg("x86_64-stage-4.json");
     cmd.arg("--profile").arg("stage-4");
     cmd.arg("-Zbuild-std=core")
         .arg("-Zbuild-std-features=compiler-builtins-mem");
-    cmd.arg("--root").arg(out_dir);
     cmd.env_remove("RUSTFLAGS");
     cmd.env_remove("CARGO_ENCODED_RUSTFLAGS");
     cmd.env_remove("RUSTC_WORKSPACE_WRAPPER"); // used by clippy
     let status = cmd
         .status()
         .await
-        .expect("failed to run cargo install for bios stage-4");
+        .expect("failed to run cargo build for bios stage-4");
     let elf_path = if status.success() {
         let path = out_dir.join("bin").join("bootloader-x86_64-bios-stage-4");
         assert!(
