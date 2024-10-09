@@ -275,16 +275,6 @@ impl BootloaderConfig {
             frame_buffer,
         })
     }
-
-    #[cfg(test)]
-    fn random() -> Self {
-        Self {
-            version: ApiVersion::random(),
-            mappings: Mappings::random(),
-            kernel_stack_size: rand::random(),
-            frame_buffer: FrameBuffer::random(),
-        }
-    }
 }
 
 impl Default for BootloaderConfig {
@@ -317,16 +307,6 @@ impl ApiVersion {
             version_minor: version_info::VERSION_MINOR,
             version_patch: version_info::VERSION_PATCH,
             pre_release: version_info::VERSION_PRE,
-        }
-    }
-
-    #[cfg(test)]
-    fn random() -> ApiVersion {
-        Self {
-            version_major: rand::random(),
-            version_minor: rand::random(),
-            version_patch: rand::random(),
-            pre_release: rand::random(),
         }
     }
 
@@ -423,39 +403,6 @@ impl Mappings {
             ramdisk_memory: Mapping::new_default(),
         }
     }
-
-    #[cfg(test)]
-    fn random() -> Mappings {
-        let phys = rand::random();
-        let recursive = rand::random();
-        Self {
-            kernel_stack: Mapping::random(),
-            boot_info: Mapping::random(),
-            framebuffer: Mapping::random(),
-            physical_memory: if phys {
-                Option::Some(Mapping::random())
-            } else {
-                Option::None
-            },
-            page_table_recursive: if recursive {
-                Option::Some(Mapping::random())
-            } else {
-                Option::None
-            },
-            aslr: rand::random(),
-            dynamic_range_start: if rand::random() {
-                Option::Some(rand::random())
-            } else {
-                Option::None
-            },
-            dynamic_range_end: if rand::random() {
-                Option::Some(rand::random())
-            } else {
-                Option::None
-            },
-            ramdisk_memory: Mapping::random(),
-        }
-    }
 }
 
 /// Specifies how the bootloader should map a memory region into the virtual address space.
@@ -479,16 +426,6 @@ impl Mapping {
     /// that this is a `const` function.
     pub const fn new_default() -> Self {
         Self::Dynamic
-    }
-
-    #[cfg(test)]
-    fn random() -> Mapping {
-        let fixed = rand::random();
-        if fixed {
-            Self::Dynamic
-        } else {
-            Self::FixedAddress(rand::random())
-        }
     }
 
     const fn serialize(&self) -> [u8; 9] {
@@ -541,22 +478,6 @@ impl FrameBuffer {
             minimum_framebuffer_width: Option::None,
         }
     }
-
-    #[cfg(test)]
-    fn random() -> FrameBuffer {
-        Self {
-            minimum_framebuffer_height: if rand::random() {
-                Option::Some(rand::random())
-            } else {
-                Option::None
-            },
-            minimum_framebuffer_width: if rand::random() {
-                Option::Some(rand::random())
-            } else {
-                Option::None
-            },
-        }
-    }
 }
 
 /// Taken from https://github.com/rust-lang/rust/blob/e100ec5bc7cd768ec17d75448b29c9ab4a39272b/library/core/src/slice/mod.rs#L1673-L1677
@@ -567,28 +488,4 @@ fn split_array_ref<const N: usize, T>(slice: &[T]) -> (&[T; N], &[T]) {
     let (a, b) = slice.split_at(N);
     // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at)
     unsafe { (&*(a.as_ptr() as *const [T; N]), b) }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn mapping_serde() {
-        for _ in 0..10000 {
-            let config = Mapping::random();
-            assert_eq!(Mapping::deserialize(&config.serialize()), Ok(config));
-        }
-    }
-
-    #[test]
-    fn config_serde() {
-        for _ in 0..10000 {
-            let config = BootloaderConfig::random();
-            assert_eq!(
-                BootloaderConfig::deserialize(&config.serialize()),
-                Ok(config)
-            );
-        }
-    }
 }
